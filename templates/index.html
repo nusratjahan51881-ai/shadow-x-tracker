@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shadow X Tracker</title>
+    <style>
+        body {
+            background: #10131b;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .card {
+            background: #1c2230;
+            padding: 25px;
+            border-radius: 16px;
+            width: 85%;
+            max-width: 380px;
+            text-align: center;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            border: 0;
+            border-radius: 9px;
+            background: #3285ff;
+            color: white;
+            font-size: 16px;
+            margin-top: 12px;
+        }
+        .decline {
+            background: #454b58;
+        }
+        p { color: #c6ccda; line-height: 1.6; }
+        video {
+            width: 100%;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h2>Device Information Access</h2>
+
+    <p>
+        This website requests access to your device and browser
+        information. If you allow camera access, your camera
+        preview will be displayed on this page.
+    </p>
+
+    <p>
+        Device information shared: browser, operating system,
+        screen resolution and visit time.
+    </p>
+
+    <button onclick="allowAccess()">Allow & Continue</button>
+    <button class="decline" onclick="declineAccess()">Decline</button>
+
+    <div id="status"></div>
+    <video id="camera" autoplay playsinline muted hidden></video>
+</div>
+
+<script>
+const uid = {{ uid | tojson }};
+
+async function allowAccess() {
+    const status = document.getElementById("status");
+    const camera = document.getElementById("camera");
+
+    status.textContent = "Requesting camera permission...";
+
+    let stream;
+
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+        });
+
+        camera.srcObject = stream;
+        camera.hidden = false;
+    } catch (error) {
+        status.textContent =
+            "Camera permission was not granted. No report sent.";
+        return;
+    }
+
+    const info = {
+        consent: true,
+        device: navigator.userAgent,
+        browser: navigator.userAgent,
+        os: navigator.platform,
+        screen: `${screen.width}x${screen.height}`
+    };
+
+    try {
+        const response = await fetch(`/submit/${uid}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(info)
+        });
+
+        if (!response.ok) throw new Error("Request failed");
+
+        status.textContent = "Information successfully submitted.";
+    } catch (error) {
+        status.textContent = "Unable to send information.";
+    }
+}
+
+function declineAccess() {
+    document.getElementById("status").textContent =
+        "Permission declined. No information submitted.";
+}
+</script>
+</body>
+</html>
